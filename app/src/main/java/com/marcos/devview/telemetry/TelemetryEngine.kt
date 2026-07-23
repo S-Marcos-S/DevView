@@ -298,7 +298,7 @@ object TelemetryEngine {
 
         // Query time window for network bytes
         val endTime = System.currentTimeMillis()
-        val startTime = endTime - 1000 * 60 // last 60 seconds
+        val startTime = 0L // Query cumulative since boot to bypass completed bucket latency
 
         for (proc in processes) {
             if (proc.isRealTelemetry) {

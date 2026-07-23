@@ -153,8 +153,8 @@ class MainActivity : AppCompatActivity() {
                     fullProcessList.clear()
                     fullProcessList.addAll(scanned)
                     filterProcesses() // Display instantly
-                    binding.progressBar.visibility = View.GONE
                 }
+                binding.progressBar.visibility = View.GONE
 
                 // Real-time telemetry update loop (every 2 seconds)
                 while (true) {
