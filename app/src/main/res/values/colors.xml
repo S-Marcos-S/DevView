@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="bg_dark">#0F172A</color>
+    <color name="bg_surface">#1E293B</color>
+    <color name="bg_surface_glow">#2D3748</color>
+    <color name="cyan_neon">#06B6D4</color>
+    <color name="purple_neon">#8B5CF6</color>
+    <color name="green_neon">#10B981</color>
+    <color name="orange_neon">#F59E0B</color>
+    <color name="text_primary">#F8FAFC</color>
+    <color name="text_secondary">#94A3B8</color>
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
+    <color name="transparent">#00000000</color>
+    <color name="border_card">#334155</color>
+</resources>

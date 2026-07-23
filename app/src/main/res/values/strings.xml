@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">DevView</string>
+    <string name="search_hint">Pesquisar processos...</string>
+    <string name="status_foreground">Primeiro Plano</string>
+    <string name="status_background">Segundo Plano</string>
+    <string name="telemetry_simulated">Telemetria: Estimada (Android API Lock)</string>
+    <string name="telemetry_actual">Telemetria: Real (DevView Interno)</string>
+    <string name="label_cpu">CPU</string>
+    <string name="label_ram">RAM</string>
+    <string name="label_network">Internet</string>
+    <string name="label_storage">Espaço</string>
+    <string name="perm_required_title">Acesso ao Uso Necessário</string>
+    <string name="perm_required_desc">O DevView requer a permissão de Acesso ao Uso para identificar quais aplicativos estão rodando no sistema e medir o consumo de internet. Clique abaixo para abrir as configurações e conceder o acesso.</string>
+    <string name="btn_grant_perm">Conceder Permissão</string>
+    <string name="widget_title">Widget de Saudação DevView</string>
+    <string name="widget_desc">Widget que exibe a data, dia da semana e uma visualização rápida das tarefas rodando.</string>
+    <string name="widget_tasks_header">Tarefas Ativas no Sistema</string>
+    <string name="about_dialog_title">Sobre a Telemetria do DevView</string>
+    <string name="about_dialog_message">O Android 7.0+ (API 24+) bloqueia o acesso direto ao sistema de arquivos /proc por razões de privacidade. \n\nPor isso, os dados de CPU e RAM para aplicativos de terceiros são gerados com base em uma simulação flutuante altamente realista. O uso de Internet (Rede) e o tamanho em disco são calculados diretamente das APIs de tráfego e armazenamento do Android. Já a telemetria do próprio DevView é 100% real.</string>
+    <string name="btn_close">Fechar</string>
+</resources>

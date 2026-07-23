@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.DevView" parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- Primary brand color. -->
+        <item name="colorPrimary">@color/cyan_neon</item>
+        <item name="colorOnPrimary">@color/bg_dark</item>
+        <!-- Secondary brand color. -->
+        <item name="colorSecondary">@color/purple_neon</item>
+        <item name="colorOnSecondary">@color/white</item>
+        <!-- Status bar color. -->
+        <item name="android:statusBarColor">@color/bg_dark</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <!-- Background colors -->
+        <item name="android:windowBackground">@color/bg_dark</item>
+    </style>
+</resources>
