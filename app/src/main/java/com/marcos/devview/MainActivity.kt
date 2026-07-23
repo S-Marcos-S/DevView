@@ -1,9 +1,11 @@
 package com.marcos.devview
 
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.View
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -15,6 +17,7 @@ import com.marcos.devview.telemetry.TelemetryEngine
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import rikka.shizuku.Shizuku
 import java.util.Locale
 
 class MainActivity : AppCompatActivity() {
@@ -29,12 +32,41 @@ class MainActivity : AppCompatActivity() {
     private var telemetryJob: Job? = null
     private var currentSearchQuery = ""
 
+    // Shizuku permission request listener
+    private val shizukuPermissionListener = Shizuku.OnRequestPermissionResultListener { requestCode, grantResult ->
+        if (requestCode == 1001) {
+            val granted = grantResult == PackageManager.PERMISSION_GRANTED
+            adapter?.updateShizukuStatus(granted)
+            binding.shizukuBanner.visibility = if (granted) View.GONE else View.VISIBLE
+            if (granted) {
+                Toast.makeText(this, "Permissão do Shizuku concedida!", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
         setupUI()
+        
+        // Register Shizuku permission listener
+        try {
+            Shizuku.addRequestPermissionResultListener(shizukuPermissionListener)
+        } catch (e: Exception) {
+            android.util.Log.e("MainActivity", "Failed to add Shizuku listener", e)
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        // Unregister Shizuku permission listener
+        try {
+            Shizuku.removeRequestPermissionResultListener(shizukuPermissionListener)
+        } catch (e: Exception) {
+            android.util.Log.e("MainActivity", "Failed to remove Shizuku listener", e)
+        }
     }
 
     private fun setupUI() {
@@ -48,9 +80,14 @@ class MainActivity : AppCompatActivity() {
             TelemetryEngine.openPermissionSettings(this)
         }
 
+        // Setup Shizuku Connection Button
+        binding.btnConnectShizuku.setOnClickListener {
+            connectShizuku()
+        }
+
         // Setup Recycler View
         binding.rvProcesses.layoutManager = LinearLayoutManager(this)
-        adapter = ProcessAdapter(filteredProcessList)
+        adapter = ProcessAdapter(filteredProcessList, TelemetryEngine.isShizukuActive())
         binding.rvProcesses.adapter = adapter
 
         // Setup Search Filter
@@ -85,6 +122,24 @@ class MainActivity : AppCompatActivity() {
         startTelemetryLoop()
     }
 
+    private fun connectShizuku() {
+        try {
+            if (Shizuku.pingBinder()) {
+                if (Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED) {
+                    adapter?.updateShizukuStatus(true)
+                    binding.shizukuBanner.visibility = View.GONE
+                    Toast.makeText(this, "Shizuku já está conectado e autorizado!", Toast.LENGTH_SHORT).show()
+                } else {
+                    Shizuku.requestPermission(1001)
+                }
+            } else {
+                Toast.makeText(this, "O Shizuku não está rodando. Por favor, inicie o app Shizuku primeiro.", Toast.LENGTH_LONG).show()
+            }
+        } catch (e: Exception) {
+            Toast.makeText(this, "Erro ao conectar ao Shizuku: ${e.message}", Toast.LENGTH_LONG).show()
+        }
+    }
+
     private fun startTelemetryLoop() {
         if (telemetryJob != null) return // Already running
 
@@ -103,6 +158,10 @@ class MainActivity : AppCompatActivity() {
 
                 // Real-time telemetry update loop (every 2 seconds)
                 while (true) {
+                    val isShizukuActive = TelemetryEngine.isShizukuActive()
+                    binding.shizukuBanner.visibility = if (isShizukuActive) View.GONE else View.VISIBLE
+                    adapter?.updateShizukuStatus(isShizukuActive)
+
                     TelemetryEngine.updateTelemetry(this@MainActivity, fullProcessList)
                     filterProcesses()
                     delay(2000)

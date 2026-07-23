@@ -82,7 +82,7 @@
         android:layout_marginStart="20dp"
         android:layout_marginEnd="20dp"
         android:layout_marginTop="12dp"
-        android:visibility="visible"
+        android:visibility="gone"
         app:layout_constraintTop_toBottomOf="@id/etSearch"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
@@ -130,7 +130,67 @@
             app:backgroundTint="@null" />
     </LinearLayout>
 
-    <!-- Main Recycler View (Always visible and positioned below the banner or the search box) -->
+    <!-- Compact Shizuku Banner (Horizontal) -->
+    <LinearLayout
+        android:id="@+id/shizukuBanner"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:background="@drawable/bg_card_process"
+        android:padding="12dp"
+        android:layout_marginStart="20dp"
+        android:layout_marginEnd="20dp"
+        android:layout_marginTop="8dp"
+        android:visibility="gone"
+        app:layout_constraintTop_toBottomOf="@id/permissionPanel"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <ImageView
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:src="@android:drawable/ic_menu_info_details"
+            app:tint="@color/purple_neon" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:layout_marginStart="10dp"
+            android:layout_marginEnd="10dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Telemetria CPU/RAM Desativada"
+                android:textColor="@color/text_primary"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Conecte ao Shizuku para ativar dados de hardware."
+                android:textColor="@color/text_secondary"
+                android:textSize="10sp" />
+        </LinearLayout>
+
+        <Button
+            android:id="@+id/btnConnectShizuku"
+            style="?android:attr/buttonStyleSmall"
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:text="Conectar"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:textColor="@color/white"
+            android:background="@drawable/bg_status_background"
+            app:backgroundTint="@null" />
+    </LinearLayout>
+
+    <!-- Main Recycler View (Positioned below Shizuku banner) -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rvProcesses"
         android:layout_width="0dp"
@@ -139,7 +199,7 @@
         android:paddingStart="16dp"
         android:paddingEnd="16dp"
         android:clipToPadding="false"
-        app:layout_constraintTop_toBottomOf="@id/permissionPanel"
+        app:layout_constraintTop_toBottomOf="@id/shizukuBanner"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />

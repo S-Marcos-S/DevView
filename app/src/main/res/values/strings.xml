@@ -6,6 +6,7 @@
     <string name="status_background">Segundo Plano</string>
     <string name="telemetry_simulated">Telemetria: Estimada (Android API Lock)</string>
     <string name="telemetry_actual">Telemetria: Real (DevView Interno)</string>
+    <string name="telemetry_shizuku">Telemetria: Real (Shizuku Daemon)</string>
     <string name="label_cpu">CPU</string>
     <string name="label_ram">RAM</string>
     <string name="label_network">Internet</string>

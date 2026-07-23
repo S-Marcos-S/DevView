@@ -11,7 +11,8 @@ import com.marcos.devview.telemetry.ProcessTelemetry
 import java.util.Locale
 
 class ProcessAdapter(
-    private var processes: List<ProcessTelemetry>
+    private var processes: List<ProcessTelemetry>,
+    private var isShizukuActive: Boolean = false
 ) : RecyclerView.Adapter<ProcessAdapter.ProcessViewHolder>() {
 
     fun updateData(newProcesses: List<ProcessTelemetry>) {
@@ -24,6 +25,13 @@ class ProcessAdapter(
         }
         this.processes = newProcesses
         notifyDataSetChanged() // Quick refresh for real-time telemetry changes
+    }
+
+    fun updateShizukuStatus(isActive: Boolean) {
+        if (this.isShizukuActive != isActive) {
+            this.isShizukuActive = isActive
+            notifyDataSetChanged()
+        }
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ProcessViewHolder {
@@ -73,14 +81,25 @@ class ProcessAdapter(
             binding.layoutDetails.visibility = if (process.isExpanded) View.VISIBLE else View.GONE
             binding.imgChevron.rotation = if (process.isExpanded) 180f else 0f
 
-            // Bind real-time telemetry values
-            binding.txtCpuValue.text = "${process.cpuUsage}%"
-            binding.progressCpu.progress = process.cpuUsage
+            // Conditional CPU/RAM Visibility based on Shizuku
+            val showCpuRam = process.isRealTelemetry || isShizukuActive
+            if (showCpuRam) {
+                binding.layoutCpuMetric.visibility = View.VISIBLE
+                binding.layoutRamMetric.visibility = View.VISIBLE
+                binding.txtShizukuRequiredPlaceholder.visibility = View.GONE
 
-            binding.txtRamValue.text = "${process.ramUsageMb} MB"
-            // Let's cap RAM progress bar at 512MB for visualization scaling
-            val ramProgress = ((process.ramUsageMb.toFloat() / 512f) * 100).toInt().coerceIn(1, 100)
-            binding.progressRam.progress = ramProgress
+                // Bind real-time telemetry values
+                binding.txtCpuValue.text = "${process.cpuUsage}%"
+                binding.progressCpu.progress = process.cpuUsage
+
+                binding.txtRamValue.text = "${process.ramUsageMb} MB"
+                val ramProgress = ((process.ramUsageMb.toFloat() / 512f) * 100).toInt().coerceIn(1, 100)
+                binding.progressRam.progress = ramProgress
+            } else {
+                binding.layoutCpuMetric.visibility = View.GONE
+                binding.layoutRamMetric.visibility = View.GONE
+                binding.txtShizukuRequiredPlaceholder.visibility = View.VISIBLE
+            }
 
             // Network speeds
             val rxSpeed = formatSpeed(process.networkRxBps)
@@ -94,6 +113,9 @@ class ProcessAdapter(
             if (process.isRealTelemetry) {
                 binding.txtTelemetrySource.text = context.getString(R.string.telemetry_actual)
                 binding.txtTelemetrySource.setTextColor(ContextCompat.getColor(context, R.color.cyan_neon))
+            } else if (isShizukuActive) {
+                binding.txtTelemetrySource.text = context.getString(R.string.telemetry_shizuku)
+                binding.txtTelemetrySource.setTextColor(ContextCompat.getColor(context, R.color.green_neon))
             } else {
                 binding.txtTelemetrySource.text = context.getString(R.string.telemetry_simulated)
                 binding.txtTelemetrySource.setTextColor(ContextCompat.getColor(context, R.color.text_secondary))

@@ -18,6 +18,7 @@ import kotlin.math.abs
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import rikka.shizuku.Shizuku
 
 object TelemetryEngine {
 
@@ -156,6 +157,90 @@ object TelemetryEngine {
         )
     }
 
+    fun isShizukuActive(): Boolean {
+        return try {
+            if (Shizuku.pingBinder()) {
+                Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED
+            } else {
+                false
+            }
+        } catch (e: Throwable) {
+            false
+        }
+    }
+
+    private fun executeTopViaShizuku(): List<String> {
+        val lines = ArrayList<String>()
+        var process: java.lang.Process? = null
+        try {
+            process = Shizuku.newProcess(arrayOf("top", "-n", "1", "-b"), null, null)
+            val reader = java.io.BufferedReader(java.io.InputStreamReader(process.inputStream))
+            var line: String?
+            while (reader.readLine().also { line = it } != null) {
+                line?.let { lines.add(it) }
+            }
+            process.waitFor()
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to run top via Shizuku: ${e.message}")
+        } finally {
+            process?.destroy()
+        }
+        return lines
+    }
+
+    private fun parseTopOutput(lines: List<String>, processes: List<ProcessTelemetry>) {
+        var cpuIndex = -1
+        var rssIndex = -1
+        var nameIndex = -1
+        
+        val procMap = processes.associateBy { it.packageName }
+        
+        for (line in lines) {
+            val trimmed = line.trim()
+            if (trimmed.startsWith("PID")) {
+                val headers = trimmed.split("\\s+".toRegex())
+                cpuIndex = headers.indexOf("CPU%")
+                if (cpuIndex == -1) cpuIndex = headers.indexOf("%CPU")
+                rssIndex = headers.indexOf("RSS")
+                if (rssIndex == -1) rssIndex = headers.indexOf("RES")
+                nameIndex = headers.indexOf("Name")
+                if (nameIndex == -1) nameIndex = headers.indexOf("ARGS")
+                continue
+            }
+            
+            if (cpuIndex != -1 && rssIndex != -1 && nameIndex != -1) {
+                val tokens = trimmed.split("\\s+".toRegex())
+                if (tokens.size > nameIndex && tokens.size > cpuIndex && tokens.size > rssIndex) {
+                    val pkgName = tokens[nameIndex]
+                    val proc = procMap[pkgName]
+                    if (proc != null && !proc.isRealTelemetry) { // Only update non-local apps
+                        // Parse CPU
+                        val cpuStr = tokens[cpuIndex].replace("%", "")
+                        val cpuVal = cpuStr.toFloatOrNull()?.toInt() ?: 0
+                        proc.cpuUsage = cpuVal.coerceIn(0, 100)
+                        
+                        // Parse RAM (RSS)
+                        val rssStr = tokens[rssIndex]
+                        var ramMb = 0
+                        if (rssStr.endsWith("M", ignoreCase = true)) {
+                            ramMb = rssStr.substring(0, rssStr.length - 1).toFloatOrNull()?.toInt() ?: 0
+                        } else if (rssStr.endsWith("K", ignoreCase = true)) {
+                            val kb = rssStr.substring(0, rssStr.length - 1).toFloatOrNull() ?: 0f
+                            ramMb = (kb / 1024).toInt()
+                        } else if (rssStr.endsWith("G", ignoreCase = true)) {
+                            val gb = rssStr.substring(0, rssStr.length - 1).toFloatOrNull() ?: 0f
+                            ramMb = (gb * 1024).toInt()
+                        } else {
+                            val kb = rssStr.toFloatOrNull() ?: 0f
+                            ramMb = (kb / 1024).toInt()
+                        }
+                        proc.ramUsageMb = ramMb.coerceAtLeast(15)
+                    }
+                }
+            }
+        }
+    }
+
     suspend fun updateTelemetry(context: Context, processes: List<ProcessTelemetry>): List<ProcessTelemetry> = withContext(Dispatchers.IO) {
         val now = SystemClock.elapsedRealtime()
         val timeDeltaMs = now - lastNetworkQueryTime
@@ -165,6 +250,21 @@ object TelemetryEngine {
 
         val networkStatsManager = context.getSystemService(Context.NETWORK_STATS_SERVICE) as NetworkStatsManager
         val hasUsagePermission = hasUsageAccessPermission(context)
+        val shizukuActive = isShizukuActive()
+
+        // 1. If Shizuku is active, run top to fetch actual CPU and RAM metrics
+        if (shizukuActive) {
+            val topLines = executeTopViaShizuku()
+            parseTopOutput(topLines, processes)
+        } else {
+            // Hide CPU/RAM values of non-local apps by setting them to 0 (hidden in UI)
+            for (proc in processes) {
+                if (!proc.isRealTelemetry) {
+                    proc.cpuUsage = 0
+                    proc.ramUsageMb = 0
+                }
+            }
+        }
 
         // Query time window for network bytes
         val endTime = System.currentTimeMillis()
@@ -172,14 +272,14 @@ object TelemetryEngine {
 
         for (proc in processes) {
             if (proc.isRealTelemetry) {
-                // Actual DevView Telemetry
+                // Actual DevView Telemetry (Local RAM/CPU)
                 
                 // RAM
                 val runtime = Runtime.getRuntime()
                 val usedMem = (runtime.totalMemory() - runtime.freeMemory()) / (1024 * 1024)
                 proc.ramUsageMb = usedMem.toInt()
 
-                // CPU (DevView process CPU load calculation)
+                // CPU
                 val currentCpuTime = Process.getElapsedCpuTime()
                 val currentRealTime = SystemClock.elapsedRealtime()
                 val cpuDelta = currentCpuTime - lastDevViewCpuTime
@@ -189,35 +289,18 @@ object TelemetryEngine {
                 lastDevViewRealTime = currentRealTime
 
                 if (realDelta > 0) {
-                    // cpuDelta is in milliseconds of CPU time. realDelta is wall clock time.
-                    // CPU usage = (CPU Time Delta / Real Time Delta) * 100
                     val numCores = Runtime.getRuntime().availableProcessors().coerceAtLeast(1)
                     val cpuPercent = ((cpuDelta.toDouble() / realDelta.toDouble()) * 100.0 / numCores).toInt()
                     proc.cpuUsage = cpuPercent.coerceIn(1, 100)
                 } else {
                     proc.cpuUsage = 2
                 }
-
-            } else {
-                // Simulated Telemetry (CPU & RAM)
-                val baseRam = baseMemoryCache[proc.packageName] ?: 80
-                val ramFluctuation = (-4..4).random()
-                proc.ramUsageMb = (baseRam + ramFluctuation).coerceAtLeast(15)
-
-                if (proc.isForeground) {
-                    proc.cpuUsage = (5..38).random()
-                } else {
-                    // Background apps consume minimal CPU
-                    proc.cpuUsage = if ((0..10).random() > 8) (1..3).random() else 0
-                }
             }
 
             // Network Stats (Real telemetry per UID if permission is granted and card is expanded)
             if (hasUsagePermission && (proc.isExpanded || proc.isRealTelemetry)) {
                 try {
-                    // Query WiFi
                     val wifiRxTx = getUidNetworkBytes(networkStatsManager, ConnectivityManager.TYPE_WIFI, proc.uid, startTime, endTime)
-                    // Query Mobile
                     val mobileRxTx = getUidNetworkBytes(networkStatsManager, ConnectivityManager.TYPE_MOBILE, proc.uid, startTime, endTime)
 
                     val currentRx = wifiRxTx.first + mobileRxTx.first
@@ -235,9 +318,7 @@ object TelemetryEngine {
                         proc.networkTxBps = 0L
                     }
 
-                    // Update cache with current totals
                     networkBytesCache[proc.uid] = Pair(currentRx, currentTx)
-
                 } catch (e: Exception) {
                     Log.w(TAG, "Failed to query network for UID ${proc.uid}: ${e.message}")
                     proc.networkRxBps = 0L
