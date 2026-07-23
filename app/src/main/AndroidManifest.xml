@@ -6,6 +6,11 @@
         tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
         tools:ignore="QueryAllPackagesPermission" />
+    <uses-permission android:name="moe.shizuku.manager.permission.API_V23" />
+
+    <queries>
+        <package android:name="moe.shizuku.manager" />
+    </queries>
 
     <application
         android:allowBackup="true"
@@ -23,6 +28,15 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Shizuku Content Provider for binder initialization -->
+        <provider
+            android:name="rikka.shizuku.ShizukuProvider"
+            android:authorities="${applicationId}.shizuku"
+            android:multiprocess="false"
+            android:enabled="true"
+            android:exported="true"
+            android:permission="android.permission.INTERACT_ACROSS_USERS_FULL" />
 
     </application>
 
