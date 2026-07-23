@@ -9,7 +9,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.marcos.devview.adapter.ProcessAdapter
-import com.marcos.devview.databinding.MainActivityBinding
+import com.marcos.devview.databinding.ActivityMainBinding
 import com.marcos.devview.telemetry.ProcessTelemetry
 import com.marcos.devview.telemetry.TelemetryEngine
 import kotlinx.coroutines.Job
@@ -19,7 +19,7 @@ import java.util.Locale
 
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var binding: MainActivityBinding
+    private lateinit var binding: ActivityMainBinding
     private var adapter: ProcessAdapter? = null
     
     // In-memory list of processes scanned
@@ -31,7 +31,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = MainActivityBinding.inflate(layoutInflater)
+        binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
         setupUI()
