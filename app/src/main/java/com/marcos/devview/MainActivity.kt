@@ -77,17 +77,12 @@ class MainActivity : AppCompatActivity() {
     private fun checkPermissionAndStartTelemetry() {
         val hasPermission = TelemetryEngine.hasUsageAccessPermission(this)
         
-        if (hasPermission) {
-            binding.permissionPanel.visibility = View.GONE
-            binding.rvProcesses.visibility = View.VISIBLE
-            binding.etSearch.visibility = View.VISIBLE
-            startTelemetryLoop()
-        } else {
-            binding.permissionPanel.visibility = View.VISIBLE
-            binding.rvProcesses.visibility = View.GONE
-            binding.etSearch.visibility = View.GONE
-            stopTelemetryLoop()
-        }
+        // Show banner only if permission is missing, but never block the list
+        binding.permissionPanel.visibility = if (hasPermission) View.GONE else View.VISIBLE
+        binding.rvProcesses.visibility = View.VISIBLE
+        binding.etSearch.visibility = View.VISIBLE
+        
+        startTelemetryLoop()
     }
 
     private fun startTelemetryLoop() {
