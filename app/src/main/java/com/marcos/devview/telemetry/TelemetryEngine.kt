@@ -199,20 +199,43 @@ object TelemetryEngine {
             val trimmed = line.trim()
             if (trimmed.startsWith("PID")) {
                 val headers = trimmed.split("\\s+".toRegex())
+                
+                // 1. Find CPU column index
                 cpuIndex = headers.indexOf("CPU%")
                 if (cpuIndex == -1) cpuIndex = headers.indexOf("%CPU")
+                if (cpuIndex == -1) {
+                    val sCpuIndex = headers.indexOf("S[%CPU]")
+                    if (sCpuIndex != -1) {
+                        cpuIndex = sCpuIndex + 1 // Immediately after state column
+                    }
+                }
+                if (cpuIndex == -1) {
+                    val sCpuIndex = headers.indexOf("S")
+                    if (sCpuIndex != -1 && sCpuIndex + 1 < headers.size) {
+                        cpuIndex = sCpuIndex + 1
+                    }
+                }
+                if (cpuIndex == -1) cpuIndex = 8 // Fallback standard
+                
+                // 2. Find RAM (RSS/RES) column index
                 rssIndex = headers.indexOf("RSS")
                 if (rssIndex == -1) rssIndex = headers.indexOf("RES")
+                if (rssIndex == -1) rssIndex = 5 // Fallback standard
+                
+                // 3. Find Name / Process ARGS index
                 nameIndex = headers.indexOf("Name")
                 if (nameIndex == -1) nameIndex = headers.indexOf("ARGS")
+                if (nameIndex == -1) nameIndex = headers.indexOf("CMD")
+                if (nameIndex == -1) nameIndex = headers.size - 1 // Fallback to last column
+                
                 continue
             }
             
             if (cpuIndex != -1 && rssIndex != -1 && nameIndex != -1) {
                 val tokens = trimmed.split("\\s+".toRegex())
                 if (tokens.size > nameIndex && tokens.size > cpuIndex && tokens.size > rssIndex) {
-                    val pkgName = tokens[nameIndex]
-                    val proc = procMap[pkgName]
+                    val rawName = tokens[nameIndex].removeSurrounding("[", "]").split("/").last()
+                    val proc = procMap[rawName]
                     if (proc != null && !proc.isRealTelemetry) { // Only update non-local apps
                         // Parse CPU
                         val cpuStr = tokens[cpuIndex].replace("%", "")
@@ -252,9 +275,16 @@ object TelemetryEngine {
         val hasUsagePermission = hasUsageAccessPermission(context)
         val shizukuActive = isShizukuActive()
 
-        // 1. If Shizuku is active, run top to fetch actual CPU and RAM metrics
+        // 1. If Shizuku is active, run top to fetch actual CPU and RAM metrics (with 2-second safety timeout)
         if (shizukuActive) {
-            val topLines = executeTopViaShizuku()
+            val topLines = try {
+                kotlinx.coroutines.withTimeoutOrNull(2000) {
+                    executeTopViaShizuku()
+                } ?: emptyList()
+            } catch (e: Exception) {
+                Log.w(TAG, "Shizuku top execution timed out or failed", e)
+                emptyList()
+            }
             parseTopOutput(topLines, processes)
         } else {
             // Hide CPU/RAM values of non-local apps by setting them to 0 (hidden in UI)
