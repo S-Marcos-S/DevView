@@ -103,10 +103,7 @@ class MainActivity : AppCompatActivity() {
 
                 // Real-time telemetry update loop (every 2 seconds)
                 while (true) {
-                    val updated = TelemetryEngine.updateTelemetry(this@MainActivity, fullProcessList)
-                    fullProcessList.clear()
-                    fullProcessList.addAll(updated)
-                    
+                    TelemetryEngine.updateTelemetry(this@MainActivity, fullProcessList)
                     filterProcesses()
                     delay(2000)
                 }
