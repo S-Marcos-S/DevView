@@ -91,22 +91,28 @@ class MainActivity : AppCompatActivity() {
         binding.progressBar.visibility = View.VISIBLE
 
         telemetryJob = lifecycleScope.launch {
-            // First load: scan all running packages
-            if (fullProcessList.isEmpty()) {
-                val scanned = TelemetryEngine.getRunningProcesses(this@MainActivity)
-                fullProcessList.clear()
-                fullProcessList.addAll(scanned)
-                binding.progressBar.visibility = View.GONE
-            }
+            try {
+                // First load: scan all running packages
+                if (fullProcessList.isEmpty()) {
+                    val scanned = TelemetryEngine.getRunningProcesses(this@MainActivity)
+                    fullProcessList.clear()
+                    fullProcessList.addAll(scanned)
+                    filterProcesses() // Display instantly
+                    binding.progressBar.visibility = View.GONE
+                }
 
-            // Real-time telemetry update loop (every 2 seconds)
-            while (true) {
-                val updated = TelemetryEngine.updateTelemetry(this@MainActivity, fullProcessList)
-                fullProcessList.clear()
-                fullProcessList.addAll(updated)
-                
-                filterProcesses()
-                delay(2000)
+                // Real-time telemetry update loop (every 2 seconds)
+                while (true) {
+                    val updated = TelemetryEngine.updateTelemetry(this@MainActivity, fullProcessList)
+                    fullProcessList.clear()
+                    fullProcessList.addAll(updated)
+                    
+                    filterProcesses()
+                    delay(2000)
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("MainActivity", "Error in telemetry loop", e)
+                binding.progressBar.visibility = View.GONE
             }
         }
     }

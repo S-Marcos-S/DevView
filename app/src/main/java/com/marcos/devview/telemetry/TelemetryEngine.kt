@@ -66,17 +66,26 @@ object TelemetryEngine {
         // Query last 1 hour of usage to find active applications
         val startTime = endTime - 1000 * 3600
 
-        val usageStatsList = usageStatsManager.queryUsageStats(
-            UsageStatsManager.INTERVAL_DAILY,
-            startTime,
-            endTime
-        ) ?: emptyList()
+        val usageStatsList = try {
+            usageStatsManager.queryUsageStats(
+                UsageStatsManager.INTERVAL_DAILY,
+                startTime,
+                endTime
+            ) ?: emptyList()
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to query usage stats: ${e.message}")
+            emptyList()
+        }
 
         // Filter and map to unique package names that were active
         // A package is active if it was used or has time in foreground in the interval
-        val activePackages = usageStatsList
-            .filter { it.totalTimeInForeground > 0 || (endTime - it.lastTimeUsed) < 1000 * 300 }
-            .associateBy { it.packageName }
+        val activePackages = if (usageStatsList.isNotEmpty()) {
+            usageStatsList
+                .filter { it.totalTimeInForeground > 0 || (endTime - it.lastTimeUsed) < 1000 * 300 }
+                .associateBy { it.packageName }
+        } else {
+            emptyMap()
+        }
 
         val installedApps = pm.getInstalledApplications(PackageManager.GET_META_DATA)
         val processList = ArrayList<ProcessTelemetry>()
@@ -201,8 +210,8 @@ object TelemetryEngine {
                 }
             }
 
-            // Network Stats (Real telemetry per UID if permission is granted)
-            if (hasUsagePermission) {
+            // Network Stats (Real telemetry per UID if permission is granted and card is expanded)
+            if (hasUsagePermission && (proc.isExpanded || proc.isRealTelemetry)) {
                 try {
                     // Query WiFi
                     val wifiRxTx = getUidNetworkBytes(networkStatsManager, ConnectivityManager.TYPE_WIFI, proc.uid, startTime, endTime)
