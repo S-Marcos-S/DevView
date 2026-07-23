@@ -16,6 +16,8 @@ import android.provider.Settings
 import java.io.File
 import kotlin.math.abs
 import android.util.Log
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 object TelemetryEngine {
 
@@ -58,7 +60,7 @@ object TelemetryEngine {
         context.startActivity(intent)
     }
 
-    fun getRunningProcesses(context: Context): List<ProcessTelemetry> {
+    suspend fun getRunningProcesses(context: Context): List<ProcessTelemetry> = withContext(Dispatchers.IO) {
         val pm = context.packageManager
         val usageStatsManager = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
         
@@ -147,14 +149,14 @@ object TelemetryEngine {
         }
 
         // Sort: DevView first, then foreground apps, then active, then alphabetical
-        return processList.sortedWith(
+        processList.sortedWith(
             compareByDescending<ProcessTelemetry> { it.packageName == context.packageName }
                 .thenByDescending { it.isForeground }
                 .thenBy { it.appName }
         )
     }
 
-    fun updateTelemetry(context: Context, processes: List<ProcessTelemetry>): List<ProcessTelemetry> {
+    suspend fun updateTelemetry(context: Context, processes: List<ProcessTelemetry>): List<ProcessTelemetry> = withContext(Dispatchers.IO) {
         val now = SystemClock.elapsedRealtime()
         val timeDeltaMs = now - lastNetworkQueryTime
         val timeDeltaSec = if (timeDeltaMs > 0) timeDeltaMs / 1000.0 else 1.0
@@ -247,7 +249,7 @@ object TelemetryEngine {
             }
         }
 
-        return processes
+        processes
     }
 
     private fun getUidNetworkBytes(
